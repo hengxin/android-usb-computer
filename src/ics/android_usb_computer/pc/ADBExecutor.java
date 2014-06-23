@@ -18,15 +18,24 @@ public class ADBExecutor
 	public static final int ANDROID_PORT = 30000;
 	public static final int HOST_BASE_PORT = 30000;
 	
+	/**
+	 * directory of "adb.exe"
+	 */
 	private final String adb_directory;
 	
+	/**
+	 * constructor of {@link ADBExecutor}
+	 * @param adb_directory {@link #adb_directory}: directory of "adb.exe"
+	 */
 	public ADBExecutor(String adb_directory)
 	{
 		this.adb_directory = adb_directory;
 	}
 	
 	/**
-	 * execute the adb command to get device ids: adb devices 
+	 * execute the ADB command "adb devices" to get online device ids 
+	 * 
+	 * @return a list of online device ids
 	 */
 	public List<String> execAdbDevices()
 	{
@@ -70,27 +79,6 @@ public class ADBExecutor
 		}
 	    
 	    return ret_device_id_list;
-	}
-	
-	/**
-	 * Runs the android debug bridge command of forwarding the ports
-	 */
-	public void execAdbPortForward()
-	{
-		Process proc = null;
-		try
-		{
-			proc = new ProcessBuilder(this.adb_directory, "forward", "tcp:" + ADBExecutor.HOST_BASE_PORT, "tcp:" + ADBExecutor.ANDROID_PORT).start();
-			proc.waitFor();
-		} catch (IOException ioe)
-		{
-			ioe.printStackTrace();
-		} catch (InterruptedException ire)
-		{
-			ire.printStackTrace();
-		}
-		
-		System.err.println(this.collectResultFromProcess(proc));
 	}
 	
 	/**
@@ -174,10 +162,13 @@ public class ADBExecutor
 	public static void main(String[] args)
 	{
 		ADBExecutor adb_executor = new ADBExecutor("D:\\AndroidSDK\\platform-tools\\adb.exe ");
-//		adb_executor.execAdbPortForward();
+		
+		// "adb devices"
 		List<String> device_id_list = adb_executor.execAdbDevices();
 		for (String device_id : device_id_list)
 			System.out.println(device_id);
+		
+		// "adb -s [device] forward tcp: tcp: "
 		adb_executor.execAdbOnlineDevicesPortForward();
 	}
 }

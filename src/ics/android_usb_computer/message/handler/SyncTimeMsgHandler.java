@@ -7,8 +7,8 @@ package ics.android_usb_computer.message.handler;
 
 import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.SyncTimeMsg;
-import android.app.AlarmManager;
 import android.content.Context;
+import android.support.v4.app.FragmentActivity;
 import android.widget.Toast;
 
 public class SyncTimeMsgHandler extends MessageHandler
@@ -38,14 +38,19 @@ public class SyncTimeMsgHandler extends MessageHandler
 	@Override
 	public void handle()
 	{
-		SyncTimeMsg sync_time_msg = (SyncTimeMsg) super.msg;
-		long time = sync_time_msg.getSyncTime();
+		long cur_time = System.currentTimeMillis();
+		long time = ((SyncTimeMsg) super.msg).getSyncTime();
 		
+		final long diff = cur_time - time;
 		
-		AlarmManager am = (AlarmManager) this.ctxt.getSystemService(Context.ALARM_SERVICE);
-		Toast.makeText(this.ctxt, String.valueOf(time), Toast.LENGTH_LONG).show();
-		
-		am.setTime(time);
+		((FragmentActivity) this.ctxt).runOnUiThread(new Runnable() 
+		{
+            @Override
+            public void run() 
+            {
+            	Toast.makeText(ctxt, String.valueOf(diff), Toast.LENGTH_LONG).show();
+            }
+		});
 	}
 
 }
