@@ -7,12 +7,18 @@ package ics.android_usb_computer.message.handler;
 
 import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.SyncTimeMsg;
+import ics.android_usb_computer.utils.ConfigureLog4J;
+
+import org.apache.log4j.Logger;
+
 import android.content.Context;
 import android.support.v4.app.FragmentActivity;
 import android.widget.Toast;
 
 public class SyncTimeMsgHandler extends MessageHandler
 {
+	private final Logger log4android = Logger.getLogger(SyncTimeMsgHandler.class);
+	
 	/**
 	 * constructor of {@link SyncTimeMsgHandler}
 	 * @param sync_time_msg message of type {@link SyncTimeMsg} to handle with
@@ -38,10 +44,10 @@ public class SyncTimeMsgHandler extends MessageHandler
 	@Override
 	public void handle()
 	{
-		long cur_time = System.currentTimeMillis();
-		long time = ((SyncTimeMsg) super.msg).getSyncTime();
+		long android_time = System.currentTimeMillis();
+		long pc_time = ((SyncTimeMsg) super.msg).getSyncTime();
 		
-		final long diff = cur_time - time;
+		final long diff = android_time - pc_time;
 		
 		((FragmentActivity) this.ctxt).runOnUiThread(new Runnable() 
 		{
@@ -51,6 +57,25 @@ public class SyncTimeMsgHandler extends MessageHandler
             	Toast.makeText(ctxt, String.valueOf(diff), Toast.LENGTH_LONG).show();
             }
 		});
+		
+		this.log2ExternalStorage(diff, pc_time, android_time);
 	}
 
+	/**
+	 * log the sync time info. into external storage for further retrieve
+	 * @param diff @param android_time - @param pc_time
+	 * @param pc_time received time of PC
+	 * @param android_time current system time of Android
+	 */
+	private void log2ExternalStorage(long diff, long pc_time, long android_time)
+	{
+		ConfigureLog4J.INSTANCE.configure();
+		
+		StringBuilder sb = new StringBuilder();
+		sb.append("diff ").append(diff).append('\n')
+			.append("pc_time ").append(pc_time).append('\n')
+			.append("android_time ").append(android_time);
+		
+		log4android.debug(sb.toString());
+	}
 }
