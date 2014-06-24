@@ -73,7 +73,7 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 			// initialize server socket in a new separate thread
 			case R.id.btn_connect:
 				new Thread(connection).start();
-				Toast.makeText(getActivity(), "Attempting to connect.", Toast.LENGTH_LONG).show();
+				Toast.makeText(getActivity(), "Port is open. Wait for time from PC.", Toast.LENGTH_LONG).show();
 				break;
 			default:
 				break;

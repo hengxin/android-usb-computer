@@ -23,8 +23,10 @@ public enum ConfigureLog4J
     {
     	if (this.log_config == null)
     	{
-	        log_config = new LogConfigurator();
+	        this.log_config = new LogConfigurator();
 	                
+//    		this.log_config = new LogConfiguratorWithAppend(false);
+    		
 	        String file_name = Environment.getExternalStorageDirectory() + File.separator + "sync_time.txt";
 	        log_config.setFileName(file_name);
 	        log_config.setRootLevel(Level.DEBUG);
