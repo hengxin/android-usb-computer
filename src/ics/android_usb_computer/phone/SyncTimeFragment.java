@@ -102,11 +102,17 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 					@Override
 					public void run()
 					{
+						ObjectInputStream ois = null;
+						Message msg = null;
+						
 						try
 						{
-							ObjectInputStream ois = new ObjectInputStream(client_socket.getInputStream());
-							Message msg = (Message) ois.readObject();
-							SyncTimeFragment.this.onReceive(msg);
+							while (true)
+							{
+								ois = new ObjectInputStream(client_socket.getInputStream());
+								msg = (Message) ois.readObject();
+								SyncTimeFragment.this.onReceive(msg);
+							}
 						} catch (StreamCorruptedException sce)
 						{
 							sce.printStackTrace();

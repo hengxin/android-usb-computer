@@ -43,6 +43,7 @@ public class PCHost
 	public PCHost(Map<String, Integer> device_hostport_map2)
 	{
 		this.device_hostport_map = device_hostport_map2;
+		this.establishConnection();
 	}
 	
 	/**
@@ -83,7 +84,7 @@ public class PCHost
 	 */
 	public void broadcastMessage(final Message msg)
 	{
-		this.establishConnection();
+//		this.establishConnection();
 		
 		class SendTask implements Runnable
 		{
@@ -180,7 +181,8 @@ public class PCHost
 		final PCHost host = new PCHost(device_hostport_map);
 
 //		host.singleSync();
-		host.periodicalSync(10, 60 * 60);
+		// sync. every 5 seconds for an hour
+		host.periodicalSync(5, 3600);
 	}
 
 }
