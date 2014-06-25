@@ -16,7 +16,7 @@ import java.util.Map;
 public class ADBExecutor
 {
 	public static final int ANDROID_PORT = 30000;
-	public static final int HOST_BASE_PORT = 30000;
+	public static final int HOST_BASE_PORT = 35000;
 	
 	/**
 	 * directory of "adb.exe"

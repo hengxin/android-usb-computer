@@ -14,12 +14,13 @@ import ics.android_usb_computer.pc.ADBExecutor;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.StreamCorruptedException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
@@ -34,12 +35,11 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	public static final String TAG = "Connection";
 	
 	// timeout in second
-	public static final int TIMEOUT = 5;
+	public static final int TIMEOUT = 60;
 
-	private final Executor exec = Executors.newCachedThreadPool();
+	private static final Executor exec = Executors.newCachedThreadPool();
 	
 	private Button btn_connect = null;
-	private ServerSocket server_socket = null;
 
 	/**
 	 * default constructor of {@link SyncTimeFragment}
@@ -70,16 +70,72 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	{
 		switch (v.getId())
 		{
-			// initialize server socket in a new separate thread
+			// initialize server socket in background
 			case R.id.btn_connect:
-				new Thread(connection).start();
-				Toast.makeText(getActivity(), "Port is open. Wait for time from PC.", Toast.LENGTH_LONG).show();
+				new ServerTask().execute();
+				Toast.makeText(getActivity(), "Port is open. Wait for time from PC.", Toast.LENGTH_SHORT).show();
 				break;
 			default:
 				break;
 		}
 	}
 
+	public void getReadyForSync()
+	{
+		ServerSocket server_socket = null;
+		
+		// initialize server socket
+		try
+		{
+			server_socket = new ServerSocket();
+			server_socket.bind(new InetSocketAddress("localhost", ADBExecutor.ANDROID_PORT));
+//			server_socket.setSoTimeout(TIMEOUT * 1000);
+
+			// wait to accept connections
+			while (true)
+			{
+				final Socket client_socket = server_socket.accept();
+				
+				// handle with the received connections (and messages) asynchronously
+				Runnable receive_task = new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						try
+						{
+							ObjectInputStream ois = new ObjectInputStream(client_socket.getInputStream());
+							Message msg = (Message) ois.readObject();
+							SyncTimeFragment.this.onReceive(msg);
+						} catch (StreamCorruptedException sce)
+						{
+							sce.printStackTrace();
+						} catch (IOException ioe)
+						{
+							ioe.printStackTrace();
+						} catch (ClassNotFoundException cnfe)
+						{
+							cnfe.printStackTrace();
+						}
+					}
+				};	
+				exec.execute(receive_task);
+			} 
+		} catch (IOException ioe)
+		{
+			ioe.printStackTrace();
+		} finally
+		{
+			try
+			{
+				server_socket.close();
+			} catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
+	}
+	
 	/**
 	 * receive messages and dispatch then to appropriate handlers
 	 * @param msg received {@link Message}
@@ -102,64 +158,18 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	}
 	
 	/**
+	 * establish socket to listen to requests in an asynchronous manner
+	 * 
 	 * create server socket, listen on port, and wait for coming connections;
 	 * upon receiving connection, start a new thread to process it.
 	 */
-	private Runnable connection = new Thread()
+	public class ServerTask extends AsyncTask<String, Void, Void>
 	{
-		public void run()
+		@Override
+		protected Void doInBackground(String... params)
 		{
-			// initialize server socket
-			try
-			{
-				server_socket = new ServerSocket(ADBExecutor.ANDROID_PORT);
-				server_socket.setSoTimeout(TIMEOUT * 1000);
-			} catch (SocketException se)
-			{
-				se.printStackTrace();
-			} catch (IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-
-			// wait to accept connections
-			while(true)
-			{
-				try
-				{
-					final Socket client_socket = server_socket.accept();
-					
-					// handle with the received connections (and messages) asynchronously
-					Runnable receive_task = new Runnable()
-					{
-						@Override
-						public void run()
-						{
-							try
-							{
-								ObjectInputStream ois = new ObjectInputStream(client_socket.getInputStream());
-								Message msg = (Message) ois.readObject();
-								SyncTimeFragment.this.onReceive(msg);
-							} catch (StreamCorruptedException sce)
-							{
-								sce.printStackTrace();
-							} catch (IOException ioe)
-							{
-								ioe.printStackTrace();
-							} catch (ClassNotFoundException cnfe)
-							{
-								cnfe.printStackTrace();
-							}
-						}
-					}; 
-					exec.execute(receive_task);
-					
-				} catch (IOException ioe)
-				{
-					ioe.printStackTrace();
-				}
-			}
+			getReadyForSync();
+			return null;
 		}
-	};	
-	
+	}
 }

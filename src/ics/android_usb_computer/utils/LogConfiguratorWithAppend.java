@@ -74,8 +74,6 @@ public class LogConfiguratorWithAppend extends LogConfigurator
 		rollingFileAppender.setMaxBackupIndex(getMaxBackupSize());
 		rollingFileAppender.setMaximumFileSize(getMaxFileSize());
 		rollingFileAppender.setImmediateFlush(isImmediateFlush());
-		// whether to overwrite the file or to append to it
-//		rollingFileAppender.setAppend(append_flag);
 
 		root.addAppender(rollingFileAppender);
 	}

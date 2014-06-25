@@ -19,6 +19,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
 public class PCHost
@@ -40,7 +43,6 @@ public class PCHost
 	public PCHost(Map<String, Integer> device_hostport_map2)
 	{
 		this.device_hostport_map = device_hostport_map2;
-		this.establishConnection();
 	}
 	
 	/**
@@ -81,6 +83,8 @@ public class PCHost
 	 */
 	public void broadcastMessage(final Message msg)
 	{
+		this.establishConnection();
+		
 		class SendTask implements Runnable
 		{
 			// send the message to this device
@@ -102,11 +106,13 @@ public class PCHost
 			@Override
 			public void run()
 			{
-				// get the socket for this device ( {@link #device} )
-				Socket host_socket = PCHost.this.device_hostsockect_map.get(this.device);
-				ObjectOutputStream oos;
 				try
 				{
+					// get the socket for this device ( {@link #device} )
+					Socket host_socket = PCHost.this.device_hostsockect_map.get(this.device);
+					
+					ObjectOutputStream oos;
+					
 					oos = new ObjectOutputStream(host_socket.getOutputStream());
 					oos.writeObject(msg);
 					oos.flush();
@@ -130,12 +136,51 @@ public class PCHost
 
 	}
 	
-	public static void main(String[] args)
+	/**
+	 * sync. time once
+	 */
+	public void singleSync()
+	{
+		long time = System.currentTimeMillis();
+		this.broadcastMessage(new SyncTimeMsg(time));
+	}
+	
+	/**
+	 * sync. time periodically
+	 * @param period   the period between successive executions (in seconds)
+	 * @param last_time duration in seconds
+	 */
+	public void periodicalSync(long period, long last_time)
+	{
+		ScheduledExecutorService sync_scheduler = Executors.newScheduledThreadPool(1);
+
+		// define the sync. task
+		final Runnable sync = new Runnable() 
+		{
+			public void run() 
+			{ 
+				long time = System.currentTimeMillis();
+				broadcastMessage(new SyncTimeMsg(time));
+				System.out.println(time);
+			}
+		};
+
+		// sync. every @param delay seconds
+		final ScheduledFuture<?> sync_handler = sync_scheduler.scheduleAtFixedRate(sync, 0, period, TimeUnit.SECONDS);
+		
+		// last for @param last_time seconds
+		sync_scheduler.schedule(new Runnable() { public void run() { sync_handler.cancel(true); } }, 
+				last_time, TimeUnit.SECONDS);
+	}
+	
+	public static void main(String[] args) throws InterruptedException
 	{
 		ADBExecutor adb_executor = new ADBExecutor("D:\\AndroidSDK\\platform-tools\\adb.exe ");
 		Map<String, Integer> device_hostport_map = adb_executor.execAdbOnlineDevicesPortForward();
-		PCHost host = new PCHost(device_hostport_map);
-		host.broadcastMessage(new SyncTimeMsg(System.currentTimeMillis()));
+		final PCHost host = new PCHost(device_hostport_map);
+
+//		host.singleSync();
+		host.periodicalSync(10, 60 * 60);
 	}
 
 }

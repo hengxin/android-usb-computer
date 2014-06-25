@@ -23,14 +23,13 @@ public enum ConfigureLog4J
     {
     	if (this.log_config == null)
     	{
-	        this.log_config = new LogConfigurator();
-	                
-//    		this.log_config = new LogConfiguratorWithAppend(false);
+    		this.log_config = new LogConfigurator();
     		
 	        String file_name = Environment.getExternalStorageDirectory() + File.separator + "sync_time.txt";
 	        log_config.setFileName(file_name);
 	        log_config.setRootLevel(Level.DEBUG);
 	        log_config.setFilePattern("%m%n");
+	        log_config.setImmediateFlush(true);
 	        log_config.setUseLogCatAppender(false);
 	        
 	        // Set log level of a specific logger

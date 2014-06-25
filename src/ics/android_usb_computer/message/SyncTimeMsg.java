@@ -36,4 +36,12 @@ public class SyncTimeMsg extends Message
 	{
 		return (long) super.payload;
 	}
+	
+	/**
+	 * @Override
+	 */
+	public String toString()
+	{
+		return "SYNC_TIME_MSG: " + payload;
+	}
 }

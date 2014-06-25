@@ -49,6 +49,7 @@ public class SyncTimeMsgHandler extends MessageHandler
 		
 		final long diff = android_time - pc_time;
 		
+		// show the diff in Toast
 		((FragmentActivity) this.ctxt).runOnUiThread(new Runnable() 
 		{
             @Override
