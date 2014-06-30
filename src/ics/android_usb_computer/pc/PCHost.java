@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PCHost
 {
-	private Executor exec = Executors.newCachedThreadPool();
+	private Executor exec = Executors.newFixedThreadPool(5);
 	
 	/**
 	 * pairs of (device, hostport)
@@ -79,43 +79,23 @@ public class PCHost
 	}
 	
 	/**
-	 * broadcast a message to every device
-	 * @param msg {@link Message} to send
+	 * send the current system time (denoted by {@link SyncTimeMsg})
+	 * to some device attached to the specified socket
+	 * @param host_socket the message is sent via this socket
 	 */
-	public void broadcastMessage(final Message msg)
+	private void sendCurrentTimeViaUSB(final Socket host_socket)
 	{
-//		this.establishConnection();
-		
 		class SendTask implements Runnable
 		{
-			// send the message to this device
-			private String device;
-
-			/**
-			 * constructor of {@link SendTask} with specified device
-			 * @param device #device
-			 */
-			public SendTask(String device)
-			{
-				this.device = device;
-			}
-			
-			/**
-			 * retrieve the socket for the specified device
-			 * and send the message to it
-			 */
+			// start a new thread to send this message via a specified socket
 			@Override
 			public void run()
 			{
 				try
 				{
-					// get the socket for this device ( {@link #device} )
-					Socket host_socket = PCHost.this.device_hostsockect_map.get(this.device);
-					
-					ObjectOutputStream oos;
-					
-					oos = new ObjectOutputStream(host_socket.getOutputStream());
-					oos.writeObject(msg);
+					ObjectOutputStream oos = new ObjectOutputStream(host_socket.getOutputStream());
+					SyncTimeMsg sync_time_msg = new SyncTimeMsg(System.currentTimeMillis());
+					oos.writeObject(sync_time_msg);
 					oos.flush();
 				} catch (SocketTimeoutException stoe)
 				{
@@ -125,25 +105,43 @@ public class PCHost
 					ioe.printStackTrace();
 				}
 			}
+			
 		}
-
-		// send the message to every device
-		for (String device : this.device_hostsockect_map.keySet())
-			this.exec.execute(new SendTask(device));
+		
+		exec.execute(new SendTask());
 	}
 	
-	public void close()
+	/**
+	 * close all the host sockets
+	 */
+	public void shutDown()
 	{
-
+		for (Map.Entry<String, Socket> device_hostsocket : this.device_hostsockect_map.entrySet())
+		{
+			try
+			{
+				device_hostsocket.getValue().close();
+			} catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
 	}
 	
 	/**
 	 * sync. time once
+	 * 
+	 * For each attached device via USB,
+	 * send it the current system time of the PC host.
 	 */
 	public void singleSync()
 	{
-		long time = System.currentTimeMillis();
-		this.broadcastMessage(new SyncTimeMsg(time));
+		Socket host_socket = null;
+		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsockect_map.entrySet())
+		{
+			host_socket = device_hostsocket.getValue();
+			this.sendCurrentTimeViaUSB(host_socket);
+		}
 	}
 	
 	/**
@@ -160,9 +158,7 @@ public class PCHost
 		{
 			public void run() 
 			{ 
-				long time = System.currentTimeMillis();
-				broadcastMessage(new SyncTimeMsg(time));
-				System.out.println(time);
+				singleSync();
 			}
 		};
 
@@ -180,9 +176,12 @@ public class PCHost
 		Map<String, Integer> device_hostport_map = adb_executor.execAdbOnlineDevicesPortForward();
 		final PCHost host = new PCHost(device_hostport_map);
 
-//		host.singleSync();
-		// sync. every 5 seconds for an hour
-		host.periodicalSync(5, 3600);
+		host.singleSync();
+//		host.shutDown();
+		
+		// sync. every 5 seconds for one hour and a half
+//		host.periodicalSync(5, 5400);
+//		host.shutDown();
 	}
 
 }

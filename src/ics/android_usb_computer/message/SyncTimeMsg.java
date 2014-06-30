@@ -11,13 +11,13 @@ public class SyncTimeMsg extends Message
 {
 	private static final long serialVersionUID = 1863422101310415237L;
 
-	/**
-	 * default constructor of {@link SyncTimeMsg}
-	 */
-	public SyncTimeMsg()
-	{
-		super(Message.SYNC_TIME_MSG);
-	}
+//	/**
+//	 * default constructor of {@link SyncTimeMsg}
+//	 */
+//	public SyncTimeMsg()
+//	{
+//		super(Message.SYNC_TIME_MSG);
+//	}
 	
 	/**
 	 * constructor of {@link SyncTimeMsg}
