@@ -39,6 +39,8 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 
 	private static final Executor exec = Executors.newCachedThreadPool();
 	
+	private ServerSocket server_socket = null;
+	
 	private Button btn_connect = null;
 
 	/**
@@ -80,9 +82,13 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 		}
 	}
 
+	/**
+	 * create server socket, listen to and accept messages
+	 */
 	public void getReadyForSync()
 	{
-		ServerSocket server_socket = null;
+		if (this.server_socket != null)
+			return;
 		
 		// initialize server socket
 		try
@@ -161,6 +167,24 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 		}
 		
 		msg_handler.handle();
+	}
+
+	/**
+	 * Release the server socket if it exists
+	 */
+	@Override
+	public void onDestroy()
+	{
+		if (this.server_socket != null && ! this.server_socket.isClosed())
+		{
+			try
+			{
+				this.server_socket.close();
+			} catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
 	}
 	
 	/**
