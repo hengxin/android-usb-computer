@@ -25,7 +25,7 @@ public enum ConfigureLog4J
     	{
     		this.log_config = new LogConfigurator();
     		
-	        String file_name = Environment.getExternalStorageDirectory() + File.separator + "sync_time.txt";
+	        String file_name = Environment.getExternalStorageDirectory() + File.separator + "/single_execution/sync_time.txt";
 	        log_config.setFileName(file_name);
 	        log_config.setRootLevel(Level.DEBUG);
 	        log_config.setFilePattern("%m%n");

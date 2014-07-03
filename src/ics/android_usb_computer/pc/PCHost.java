@@ -7,7 +7,6 @@
  */
 package ics.android_usb_computer.pc;
 
-import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.SyncTimeMsg;
 
 import java.io.IOException;

@@ -175,6 +175,10 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	@Override
 	public void onDestroy()
 	{
+		super.onDestroy();
+		
+		Toast.makeText(getActivity(), "Close the network socket and exit.", Toast.LENGTH_SHORT).show();
+		
 		if (this.server_socket != null && ! this.server_socket.isClosed())
 		{
 			try

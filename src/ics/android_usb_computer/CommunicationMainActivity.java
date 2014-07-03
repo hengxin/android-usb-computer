@@ -45,12 +45,4 @@ public class CommunicationMainActivity extends ActionBarActivity
 		return super.onOptionsItemSelected(item);
 	}
 	
-	/**
-	 * destroy the {@link SyncTimeFragment}: release running server socket
-	 */
-	@Override
-	public void onDestroy()
-	{
-		getFragmentManager().findFragmentById(R.layout.fragment_communication_main).onDestroy();
-	}
 }
