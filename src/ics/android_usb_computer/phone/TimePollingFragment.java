@@ -6,6 +6,7 @@
 package ics.android_usb_computer.phone;
 
 import ics.android_usb_computer.R;
+import ics.android_usb_computer.message.AuthMsg;
 import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.RequestTimeMsg;
 import ics.android_usb_computer.message.ResponseTimeMsg;
@@ -16,7 +17,6 @@ import ics.android_usb_computer.utils.socket.SocketUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -27,7 +27,6 @@ import java.util.concurrent.Executors;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -48,14 +47,15 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 	 * ServerSocket on the side of Android device
 	 */
 	private ServerSocket server_socket = null;
+	
 	/**
 	 * Socket connecting Android device and PC host
 	 */
 	private Socket host_socket = null;
 	
 	// UI elements 
-	
-	private Button btn_connect = null;
+	private Button btn_start_time_sync = null;
+	private Button btn_start_time_poll = null;
 	private Button btn_time_poll = null;
 
 	/**
@@ -70,14 +70,17 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState)
 	{
-		View rootView = inflater.inflate(
-				R.layout.fragment_communication_main, container, false);
+		View rootView = inflater.inflate(R.layout.fragment_communication_main, container, false);
 		
-		this.btn_connect = (Button) rootView.findViewById(R.id.btn_connect);
-		this.btn_connect.setOnClickListener(this);
+		this.btn_start_time_sync = (Button) rootView.findViewById(R.id.btn_connect);
+		this.btn_start_time_sync.setOnClickListener(this);
 		
-		this.btn_time_poll = (Button) rootView.findViewById(R.id.btn_timepoll);
+		this.btn_start_time_poll = (Button) rootView.findViewById(R.id.btn_start_polling);
+		this.btn_start_time_poll.setOnClickListener(this);
+		
+		this.btn_time_poll = (Button) rootView.findViewById(R.id.btn_time_polling);
 		this.btn_time_poll.setOnClickListener(this);
+		this.btn_time_poll.setEnabled(false);
 		
 		return rootView;
 	}
@@ -92,14 +95,19 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		{
 			// initialize server socket in background
 			case R.id.btn_connect:
-				new ServerTask().execute();
-				Toast.makeText(getActivity(), "Port is open. Time polling is working.", Toast.LENGTH_SHORT).show();
-				this.btn_connect.setEnabled(false);
+				new SyncTimeTask().execute();
+				Toast.makeText(getActivity(), "Port is open. Begin to Sync. Time.", Toast.LENGTH_SHORT).show();
+				this.btn_start_time_sync.setEnabled(false);
+				break;
+			
+			case R.id.btn_start_polling:
+				new TimePollingTask().execute();
+				Toast.makeText(getActivity(), "Starting polling time", Toast.LENGTH_SHORT).show();
+				this.btn_start_time_poll.setEnabled(false);
 				break;
 				
-			case R.id.btn_timepoll:
+			case R.id.btn_time_polling:
 				this.pollHostTime();
-				Toast.makeText(getActivity(), "Polling Time ...", Toast.LENGTH_SHORT).show();
 				break;
 				
 			default:
@@ -107,6 +115,10 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		}
 	}
 
+	/**
+	 * Starting as a ServerSocket. 
+	 * Listen to client Socket, accept, and store it for further communication.
+	 */
 	public void establishDeviceHostConnection()
 	{
 		if (this.server_socket != null)
@@ -119,52 +131,79 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 			
 			host_socket = server_socket.accept();
 			
-			receiveAuth();
+			// receive (and consume) {@link AuthMsg} from PC and enable the time-polling functionality.
+			this.receiveAuthMsg();
 		} catch (IOException ioe)
 		{
 			ioe.printStackTrace();
 		}
 	}
 
-	public void receiveAuth()
+	
+	/**
+	 * Receive {@link AuthMsg} from PC; Enable the time-polling functionality.
+	 */
+	private void receiveAuthMsg()
 	{
-		final Message msg = SocketUtil.INSTANCE.receiveMsg(host_socket);
+		SocketUtil.INSTANCE.receiveMsg(host_socket);
 		
-//		getActivity().runOnUiThread(new Runnable()
-//		{
-//			@Override
-//			public void run()
-//			{
-//				Toast.makeText(getActivity(), "Receiving message: " + msg.toString() + " via " + host_socket.toString(), Toast.LENGTH_SHORT).show();
-//			}
-//		});
-		
-		Log.d(TAG, "Receiving message: " + msg.toString() + " via " + host_socket.toString());
+		getActivity().runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				btn_time_poll.setEnabled(true);
+			}
+		});
 	}
 	
+	/**
+	 * Wait for and receive {@link ResponseTimeMsg} from PC.
+	 * @param host_socket the message is sent via this specified socket
+	 * @return {@link ResponseTimeMsg} from PC
+	 */
+	private ResponseTimeMsg receiveResponseTimeMsgInNewThread(final Socket host_socket)
+	{
+		Message msg = SocketUtil.INSTANCE.receiveMsgInNewThread(host_socket);
+		assert msg.getType() == Message.RESPONSE_TIME_MSG;
+		return (ResponseTimeMsg) msg;
+	}
+	
+	/**
+	 * Poll system time of PC
+	 * @return system time of PC
+	 */
 	public long pollHostTime()
 	{
-		long time = 0L;
-		
 		/**
 		 * Send {@link RequestTimeMsg} to PC in a new thread.
 		 * You cannot use network connection on the Main UI thread.
 		 * Otherwise you will get {@link NetworkOnMainThreadException}
 		 */
 		SocketUtil.INSTANCE.sendMsgInNewThread(new RequestTimeMsg(), host_socket);
-		Message msg = SocketUtil.INSTANCE.receiveMsgInNewThread(host_socket);
-		if (msg.getType() == Message.RESPONSE_TIME_MSG)
-			time = ((ResponseTimeMsg) msg).getHostPCTime();
+		
+		ResponseTimeMsg responseTimeMsg = this.receiveResponseTimeMsgInNewThread(host_socket);
+		final long time = responseTimeMsg.getHostPCTime();
 		
 		getActivity().runOnUiThread(new Runnable()
 		{
 			public void run()
 			{
-				Toast.makeText(getActivity(), String.valueOf("Get time"), Toast.LENGTH_SHORT).show();
+				Toast.makeText(getActivity(), String.valueOf(time), Toast.LENGTH_SHORT).show();
 			}
 		});
 		
 		return time;
+	}
+	
+	public class TimePollingTask extends AsyncTask<String, Void, Void>
+	{
+		@Override
+		protected Void doInBackground(String... params)
+		{
+			establishDeviceHostConnection();
+			return null;
+		}
 	}
 	
 	/**
@@ -282,13 +321,12 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 	 * create server socket, listen on port, and wait for coming connections;
 	 * upon receiving connection, start a new thread to process it.
 	 */
-	public class ServerTask extends AsyncTask<String, Void, Void>
+	public class SyncTimeTask extends AsyncTask<String, Void, Void>
 	{
 		@Override
 		protected Void doInBackground(String... params)
 		{
-//			getReadyForSync();
-			establishDeviceHostConnection();
+			getReadyForSync();
 			return null;
 		}
 	}

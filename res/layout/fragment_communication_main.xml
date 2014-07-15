@@ -19,12 +19,21 @@
         android:text="@string/btn_connect" />
 
     <Button
-        android:id="@+id/btn_timepoll"
+        android:id="@+id/btn_time_polling"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/btn_connect"
+        android:layout_alignParentRight="true"
         android:layout_below="@+id/btn_connect"
         android:layout_marginTop="25dp"
-        android:text="@string/btn_timepoll" />
+        android:text="@string/btn_time_polling" />
+
+    <Button
+        android:id="@+id/btn_start_polling"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btn_time_polling"
+        android:layout_alignBottom="@+id/btn_time_polling"
+        android:layout_alignParentLeft="true"
+        android:text="@string/btn_start_polling" />
 
 </RelativeLayout>
