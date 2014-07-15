@@ -25,7 +25,7 @@ public abstract class Message implements Serializable
 	// type of message
 	protected final int type;
 	// actual payload of message
-	protected Object payload;
+	protected Object payload = null;
 	
 	/**
 	 * constructor of {@link Message}
@@ -38,7 +38,7 @@ public abstract class Message implements Serializable
 	
 	/**
 	 * constructor of {@link Message}
-	 * @param type type of this message ( {@linke #type} )
+	 * @param type type of this message ( {@link #type} )
 	 * @param payload actual payload of this message ( {@link #payload} )
 	 */
 	public Message(int type, Object payload)

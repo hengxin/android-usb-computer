@@ -3,7 +3,7 @@
  * @date Jun 24, 2014
  * @description 
  */
-package ics.android_usb_computer.utils;
+package ics.android_usb_computer.utils.log;
 
 import java.io.IOException;
 

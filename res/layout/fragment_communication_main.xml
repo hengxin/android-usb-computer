@@ -17,4 +17,14 @@
         android:layout_marginRight="20dp"
         android:layout_marginTop="25dp"
         android:text="@string/btn_connect" />
+
+    <Button
+        android:id="@+id/btn_timepoll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/btn_connect"
+        android:layout_below="@+id/btn_connect"
+        android:layout_marginTop="25dp"
+        android:text="@string/btn_timepoll" />
+
 </RelativeLayout>

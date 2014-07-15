@@ -11,6 +11,7 @@ import ics.android_usb_computer.message.AuthMsg;
 import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.RequestTimeMsg;
 import ics.android_usb_computer.message.ResponseTimeMsg;
+import ics.android_usb_computer.utils.socket.SocketUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -26,6 +27,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import android.util.Log;
 
 public class PCHost
 {
@@ -105,32 +108,15 @@ public class PCHost
 	
 	private void sendAuthMsg(final Socket host_socket)
 	{
-		this.sendMsg(new AuthMsg(), host_socket);
+		SocketUtil.INSTANCE.sendMsg(new AuthMsg(), host_socket);
 	}
 	
 	private void sendResponseTimeMsg(final Socket host_socket)
 	{
-		this.sendMsg(new ResponseTimeMsg(System.currentTimeMillis()), host_socket);
+		SocketUtil.INSTANCE.sendMsg(new ResponseTimeMsg(System.currentTimeMillis()), host_socket);
 	}
 	
-	private void sendMsg(Message msg, Socket host_socket)
-	{
-		ObjectOutputStream oos;
-		try
-		{
-			oos = new ObjectOutputStream(host_socket.getOutputStream());
-			oos.writeObject(msg);
-			oos.flush();
-		} catch (SocketTimeoutException stoe)
-		{
-			stoe.printStackTrace();
-		} catch (IOException ioe)
-		{
-			ioe.printStackTrace();
-		}
-	}
-	
-	public void alternate()
+	public void startTimePollingService()
 	{
 		Socket host_socket = null;
 		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
@@ -158,6 +144,8 @@ public class PCHost
 			while (true)
 			{
 				msg = waitForRequestTimeMsg(host_socket);
+				System.out.println("Receiving RequestTimeMsg: " + msg.toString());
+				
 				if (msg.getType() == Message.REQUEST_TIME_MSG)
 					sendResponseTimeMsg(host_socket);
 			}
@@ -170,7 +158,8 @@ public class PCHost
 	 */
 	private void sendAuthMsgInNewThread(final Socket host_socket)
 	{
-		exec.execute(new SendMsgTask(new AuthMsg(), host_socket));
+//		exec.execute(new SendMsgTask(new AuthMsg(), host_socket));
+		SocketUtil.INSTANCE.sendMsgInNewThread(new AuthMsg(), host_socket);
 	}
 	
 	/**
@@ -180,7 +169,8 @@ public class PCHost
 	 */
 	private void sendResponseTimeMsgInNewThread(final Socket host_socket)
 	{
-		exec.execute(new SendMsgTask(new ResponseTimeMsg(System.currentTimeMillis()), host_socket));
+//		exec.execute(new SendMsgTask(new ResponseTimeMsg(System.currentTimeMillis()), host_socket));
+		SocketUtil.INSTANCE.sendMsgInNewThread(new ResponseTimeMsg(System.currentTimeMillis()), host_socket);
 	}
 	
 	public void waitForRequestTimeMsgInNewThread(final Socket host_socket)
@@ -230,7 +220,7 @@ public class PCHost
 	/**
 	 * Authorize time polling from all the attached Android devices
 	 */
-	public void publishAuth()
+	private void publishAuth()
 	{
 		Socket host_socket = null;
 		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
@@ -282,47 +272,6 @@ public class PCHost
 				last_time, TimeUnit.SECONDS);
 	}
 	
-	/**
-	 * Send message via specified socket
-	 * @author hengxin
-	 * @date Jul 15, 2014
-	 */
-	final class SendMsgTask implements Runnable
-	{
-		// message to send
-		private final Message msg;
-		// send message via this socket
-		private final Socket host_socket;
-		
-		/**
-		 * Constructor of {@link SendMsgTask}
-		 * @param msg {@link Message} to send
-		 * @param host_socket send message via this socket
-		 */
-		public SendMsgTask(final Message msg, final Socket host_socket)
-		{
-			this.msg = msg;
-			this.host_socket = host_socket;
-		}
-		
-		@Override
-		public void run()
-		{
-			ObjectOutputStream oos;
-			try
-			{
-				oos = new ObjectOutputStream(host_socket.getOutputStream());
-				oos.writeObject(msg);
-				oos.flush();
-			} catch (SocketTimeoutException stoe)
-			{
-				stoe.printStackTrace();
-			} catch (IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-		}
-	}
 	
 	public static void main(String[] args) throws InterruptedException
 	{
@@ -330,7 +279,8 @@ public class PCHost
 		Map<String, Integer> device_hostport_map = adb_executor.execAdbOnlineDevicesPortForward();
 		final PCHost host = new PCHost(device_hostport_map);
 
-		host.singleSync();
+		host.startTimePollingService();
+//		host.singleSync();
 //		host.shutDown();
 		
 		// sync. every 5 seconds for one hour and a half

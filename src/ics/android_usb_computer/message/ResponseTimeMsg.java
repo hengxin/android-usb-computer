@@ -25,14 +25,15 @@ public class ResponseTimeMsg extends Message
 	/**
 	 * @return actual payload of {@link ResponseTimeMsg}: time in millisecond
 	 */
-	public long getSyncTime()
+	public long getHostPCTime()
 	{
 		return (long) super.payload;
 	}
 	
 	/**
-	 * @Override
+	 * "RESPONSE_TIME_MSG: " + time
 	 */
+	@Override
 	public String toString()
 	{
 		return "RESPONSE_TIME_MSG: " + payload;

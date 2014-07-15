@@ -7,9 +7,12 @@ package ics.android_usb_computer.phone;
 
 import ics.android_usb_computer.R;
 import ics.android_usb_computer.message.Message;
+import ics.android_usb_computer.message.RequestTimeMsg;
+import ics.android_usb_computer.message.ResponseTimeMsg;
 import ics.android_usb_computer.message.handler.MessageHandler;
 import ics.android_usb_computer.message.handler.SyncTimeMsgHandler;
 import ics.android_usb_computer.pc.ADBExecutor;
+import ics.android_usb_computer.utils.socket.SocketUtil;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -24,6 +27,7 @@ import java.util.concurrent.Executors;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -40,9 +44,19 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 
 	private static final Executor exec = Executors.newCachedThreadPool();
 	
+	/**
+	 * ServerSocket on the side of Android device
+	 */
 	private ServerSocket server_socket = null;
+	/**
+	 * Socket connecting Android device and PC host
+	 */
+	private Socket host_socket = null;
+	
+	// UI elements 
 	
 	private Button btn_connect = null;
+	private Button btn_time_poll = null;
 
 	/**
 	 * default constructor of {@link TimePollingFragment}
@@ -62,6 +76,9 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		this.btn_connect = (Button) rootView.findViewById(R.id.btn_connect);
 		this.btn_connect.setOnClickListener(this);
 		
+		this.btn_time_poll = (Button) rootView.findViewById(R.id.btn_timepoll);
+		this.btn_time_poll.setOnClickListener(this);
+		
 		return rootView;
 	}
 
@@ -77,13 +94,20 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 			case R.id.btn_connect:
 				new ServerTask().execute();
 				Toast.makeText(getActivity(), "Port is open. Time polling is working.", Toast.LENGTH_SHORT).show();
+				this.btn_connect.setEnabled(false);
 				break;
+				
+			case R.id.btn_timepoll:
+				this.pollHostTime();
+				Toast.makeText(getActivity(), "Polling Time ...", Toast.LENGTH_SHORT).show();
+				break;
+				
 			default:
 				break;
 		}
 	}
 
-	public void establishConnection()
+	public void establishDeviceHostConnection()
 	{
 		if (this.server_socket != null)
 			return;
@@ -93,14 +117,54 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 			server_socket = new ServerSocket();
 			server_socket.bind(new InetSocketAddress("localhost", ADBExecutor.ANDROID_PORT));
 			
-			final Socket pc_socket = server_socket.accept();
+			host_socket = server_socket.accept();
 			
-		} catch (IOException e)
+			receiveAuth();
+		} catch (IOException ioe)
 		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			ioe.printStackTrace();
 		}
+	}
+
+	public void receiveAuth()
+	{
+		final Message msg = SocketUtil.INSTANCE.receiveMsg(host_socket);
 		
+//		getActivity().runOnUiThread(new Runnable()
+//		{
+//			@Override
+//			public void run()
+//			{
+//				Toast.makeText(getActivity(), "Receiving message: " + msg.toString() + " via " + host_socket.toString(), Toast.LENGTH_SHORT).show();
+//			}
+//		});
+		
+		Log.d(TAG, "Receiving message: " + msg.toString() + " via " + host_socket.toString());
+	}
+	
+	public long pollHostTime()
+	{
+		long time = 0L;
+		
+		/**
+		 * Send {@link RequestTimeMsg} to PC in a new thread.
+		 * You cannot use network connection on the Main UI thread.
+		 * Otherwise you will get {@link NetworkOnMainThreadException}
+		 */
+		SocketUtil.INSTANCE.sendMsgInNewThread(new RequestTimeMsg(), host_socket);
+		Message msg = SocketUtil.INSTANCE.receiveMsgInNewThread(host_socket);
+		if (msg.getType() == Message.RESPONSE_TIME_MSG)
+			time = ((ResponseTimeMsg) msg).getHostPCTime();
+		
+		getActivity().runOnUiThread(new Runnable()
+		{
+			public void run()
+			{
+				Toast.makeText(getActivity(), String.valueOf("Get time"), Toast.LENGTH_SHORT).show();
+			}
+		});
+		
+		return time;
 	}
 	
 	/**
@@ -223,7 +287,8 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		@Override
 		protected Void doInBackground(String... params)
 		{
-			getReadyForSync();
+//			getReadyForSync();
+			establishDeviceHostConnection();
 			return null;
 		}
 	}

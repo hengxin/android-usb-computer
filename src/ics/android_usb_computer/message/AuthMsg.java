@@ -15,4 +15,10 @@ public class AuthMsg extends Message
 	{
 		super(Message.AUTHORIZATION_MSG);
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "AUTHORIZATION";
+	}
 }

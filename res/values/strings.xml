@@ -3,7 +3,8 @@
 
     <string name="app_name">Android-USB-PC</string>
     <string name="hello_world">Hello world!</string>
-    <string name="btn_connect">Sync Time &#8230;</string>
+    <string name="btn_connect">Open Port &#8230;</string>
+    <string name="btn_timepoll">Polling Time &#8230;</string>
     <string name="action_settings">Settings</string>
 
 </resources>

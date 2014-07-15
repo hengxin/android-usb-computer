@@ -7,7 +7,7 @@ package ics.android_usb_computer.message.handler;
 
 import ics.android_usb_computer.message.Message;
 import ics.android_usb_computer.message.ResponseTimeMsg;
-import ics.android_usb_computer.utils.ConfigureLog4J;
+import ics.android_usb_computer.utils.log.ConfigureLog4J;
 
 import org.apache.log4j.Logger;
 
@@ -45,7 +45,7 @@ public class SyncTimeMsgHandler extends MessageHandler
 	public void handle()
 	{
 		long android_time = System.currentTimeMillis();
-		long pc_time = ((ResponseTimeMsg) super.msg).getSyncTime();
+		long pc_time = ((ResponseTimeMsg) super.msg).getHostPCTime();
 		
 		final long diff = android_time - pc_time;
 		

@@ -15,4 +15,10 @@ public class RequestTimeMsg extends Message
 	{
 		super(Message.REQUEST_TIME_MSG);
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "REQUEST_TIME_MSG";
+	}
 }

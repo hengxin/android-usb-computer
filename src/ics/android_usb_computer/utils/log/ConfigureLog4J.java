@@ -4,7 +4,7 @@
  * @description to configure "android-logging-log4j"
  *  <url>https://code.google.com/p/android-logging-log4j/</url>
  */
-package ics.android_usb_computer.utils;
+package ics.android_usb_computer.utils.log;
 
 import java.io.File;
 
