@@ -1,6 +1,6 @@
 package ics.android_usb_computer;
 
-import ics.android_usb_computer.phone.SyncTimeFragment;
+import ics.android_usb_computer.phone.TimePollingFragment;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -18,7 +18,7 @@ public class CommunicationMainActivity extends ActionBarActivity
 		if (savedInstanceState == null)
 		{
 			getSupportFragmentManager().beginTransaction()
-					.add(R.id.container, new SyncTimeFragment()).commit();
+					.add(R.id.container, new TimePollingFragment()).commit();
 		}
 
 	}

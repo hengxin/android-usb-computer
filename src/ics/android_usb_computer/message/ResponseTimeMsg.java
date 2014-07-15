@@ -1,0 +1,40 @@
+package ics.android_usb_computer.message;
+
+/**
+ * @description message for sync time
+ *   type: Message.SYNC_TIME_MSG
+ *   payload: time in millisecond (long Class type)
+ *
+ * @author hengxin
+ * @date Jun 21, 2014
+ */
+public class ResponseTimeMsg extends Message
+{
+	private static final long serialVersionUID = 1863422101310415237L;
+
+	/**
+	 * constructor of {@link ResponseTimeMsg}
+	 * @param time actual payload of {@link ResponseTimeMsg}: time in millisecond
+	 */
+	public ResponseTimeMsg(long time)
+	{
+		super(Message.SYNC_TIME_MSG);
+		super.payload = time;
+	}
+	
+	/**
+	 * @return actual payload of {@link ResponseTimeMsg}: time in millisecond
+	 */
+	public long getSyncTime()
+	{
+		return (long) super.payload;
+	}
+	
+	/**
+	 * @Override
+	 */
+	public String toString()
+	{
+		return "RESPONSE_TIME_MSG: " + payload;
+	}
+}

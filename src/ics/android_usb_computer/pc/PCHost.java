@@ -7,10 +7,15 @@
  */
 package ics.android_usb_computer.pc;
 
-import ics.android_usb_computer.message.SyncTimeMsg;
+import ics.android_usb_computer.message.AuthMsg;
+import ics.android_usb_computer.message.Message;
+import ics.android_usb_computer.message.RequestTimeMsg;
+import ics.android_usb_computer.message.ResponseTimeMsg;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.StreamCorruptedException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -22,7 +27,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-
 public class PCHost
 {
 	private Executor exec = Executors.newFixedThreadPool(5);
@@ -30,26 +34,26 @@ public class PCHost
 	/**
 	 * pairs of (device, hostport)
 	 */
-	private Map<String, Integer> device_hostport_map = new HashMap<>();
-	private Map<String, Socket> device_hostsockect_map = new HashMap<>();
+	private final Map<String, Integer> device_hostport_map;
+	private final Map<String, Socket> device_hostsocket_map = new HashMap<>();
 	
 	/**
 	 * constructor of {@link PCHost}:
 	 * establish socket connections for each device
 	 * 
-	 * @param device_hostport_map2 {@link #device_hostport_map}: map of (device, port)
+	 * @param device_hostport_map {@link #device_hostport_map}: map of (device, port)
 	 */
-	public PCHost(Map<String, Integer> device_hostport_map2)
+	public PCHost(Map<String, Integer> device_hostport_map)
 	{
-		this.device_hostport_map = device_hostport_map2;
-		this.establishConnection();
+		this.device_hostport_map = device_hostport_map;
+		this.createConnection();
 	}
 	
 	/**
 	 * establish connections for each device on a specified port on the host PC
-	 * and store them in the {@link #device_hostsockect_map} for further use
+	 * and store them in the {@link #device_hostsocket_map} for further use
 	 */
-	private void establishConnection()
+	private void createConnection()
 	{
 		String device = null;
 		int host_port = -1;
@@ -73,41 +77,137 @@ public class PCHost
 			}
 			
 			// store the sockets created for each "device"
-			this.device_hostsockect_map.put(device, device_hostsocket);
+			this.device_hostsocket_map.put(device, device_hostsocket);
+		}
+	}
+	
+	private Message waitForRequestTimeMsg(final Socket host_socket)
+	{
+		RequestTimeMsg msg = null;
+		
+		try
+		{
+			final ObjectInputStream ois = new ObjectInputStream(host_socket.getInputStream());
+			msg = (RequestTimeMsg) ois.readObject();
+		} catch (StreamCorruptedException sce)
+		{
+			sce.printStackTrace();
+		} catch (IOException ioe)
+		{
+			ioe.printStackTrace();
+		} catch (ClassNotFoundException cnfe)
+		{
+			cnfe.printStackTrace();
+		}
+		
+		return msg;
+	}
+	
+	private void sendAuthMsg(final Socket host_socket)
+	{
+		this.sendMsg(new AuthMsg(), host_socket);
+	}
+	
+	private void sendResponseTimeMsg(final Socket host_socket)
+	{
+		this.sendMsg(new ResponseTimeMsg(System.currentTimeMillis()), host_socket);
+	}
+	
+	private void sendMsg(Message msg, Socket host_socket)
+	{
+		ObjectOutputStream oos;
+		try
+		{
+			oos = new ObjectOutputStream(host_socket.getOutputStream());
+			oos.writeObject(msg);
+			oos.flush();
+		} catch (SocketTimeoutException stoe)
+		{
+			stoe.printStackTrace();
+		} catch (IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+	}
+	
+	public void alternate()
+	{
+		Socket host_socket = null;
+		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
+		{
+			host_socket = device_hostsocket.getValue();
+			exec.execute(new Alternate(host_socket));
+		}
+	}
+	
+	final class Alternate implements Runnable
+	{
+		final Socket host_socket;
+		
+		public Alternate(Socket host_socket)
+		{
+			this.host_socket = host_socket;
+		}
+		
+		@Override
+		public void run()
+		{
+			sendAuthMsg(host_socket);
+			
+			Message msg = null;
+			while (true)
+			{
+				msg = waitForRequestTimeMsg(host_socket);
+				if (msg.getType() == Message.REQUEST_TIME_MSG)
+					sendResponseTimeMsg(host_socket);
+			}
 		}
 	}
 	
 	/**
-	 * send the current system time (denoted by {@link SyncTimeMsg})
-	 * to some device attached to the specified socket
+	 * Send {@link AuthMsg} to an Android device in a new thread
+	 * @param host_socket send message to an Android device on the other side of this specified socket
+	 */
+	private void sendAuthMsgInNewThread(final Socket host_socket)
+	{
+		exec.execute(new SendMsgTask(new AuthMsg(), host_socket));
+	}
+	
+	/**
+	 * Send the current system time (denoted by {@link ResponseTimeMsg})
+	 * to some device attached to the specified socket in a new thread
 	 * @param host_socket the message is sent via this socket
 	 */
-	private void sendCurrentTimeViaUSB(final Socket host_socket)
+	private void sendResponseTimeMsgInNewThread(final Socket host_socket)
 	{
-		class SendTask implements Runnable
+		exec.execute(new SendMsgTask(new ResponseTimeMsg(System.currentTimeMillis()), host_socket));
+	}
+	
+	public void waitForRequestTimeMsgInNewThread(final Socket host_socket)
+	{
+		class ReceiveTask implements Runnable
 		{
-			// start a new thread to send this message via a specified socket
 			@Override
 			public void run()
 			{
 				try
 				{
-					ObjectOutputStream oos = new ObjectOutputStream(host_socket.getOutputStream());
-					SyncTimeMsg sync_time_msg = new SyncTimeMsg(System.currentTimeMillis());
-					oos.writeObject(sync_time_msg);
-					oos.flush();
-				} catch (SocketTimeoutException stoe)
+					final ObjectInputStream ois = new ObjectInputStream(host_socket.getInputStream());
+					ois.readObject();
+				} catch (StreamCorruptedException sce)
 				{
-					stoe.printStackTrace();
+					sce.printStackTrace();
 				} catch (IOException ioe)
 				{
 					ioe.printStackTrace();
+				} catch (ClassNotFoundException cnfe)
+				{
+					cnfe.printStackTrace();
 				}
 			}
-			
 		}
 		
-		exec.execute(new SendTask());
+		exec.execute(new ReceiveTask());
 	}
 	
 	/**
@@ -115,7 +215,7 @@ public class PCHost
 	 */
 	public void shutDown()
 	{
-		for (Map.Entry<String, Socket> device_hostsocket : this.device_hostsockect_map.entrySet())
+		for (Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
 		{
 			try
 			{
@@ -128,6 +228,19 @@ public class PCHost
 	}
 	
 	/**
+	 * Authorize time polling from all the attached Android devices
+	 */
+	public void publishAuth()
+	{
+		Socket host_socket = null;
+		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
+		{
+			host_socket = device_hostsocket.getValue();
+			this.sendAuthMsgInNewThread(host_socket);
+		}
+	}
+	
+	/**
 	 * sync. time once
 	 * 
 	 * For each attached device via USB,
@@ -136,10 +249,10 @@ public class PCHost
 	public void singleSync()
 	{
 		Socket host_socket = null;
-		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsockect_map.entrySet())
+		for(Map.Entry<String, Socket> device_hostsocket : this.device_hostsocket_map.entrySet())
 		{
 			host_socket = device_hostsocket.getValue();
-			this.sendCurrentTimeViaUSB(host_socket);
+			this.sendResponseTimeMsgInNewThread(host_socket);
 		}
 	}
 	
@@ -169,6 +282,48 @@ public class PCHost
 				last_time, TimeUnit.SECONDS);
 	}
 	
+	/**
+	 * Send message via specified socket
+	 * @author hengxin
+	 * @date Jul 15, 2014
+	 */
+	final class SendMsgTask implements Runnable
+	{
+		// message to send
+		private final Message msg;
+		// send message via this socket
+		private final Socket host_socket;
+		
+		/**
+		 * Constructor of {@link SendMsgTask}
+		 * @param msg {@link Message} to send
+		 * @param host_socket send message via this socket
+		 */
+		public SendMsgTask(final Message msg, final Socket host_socket)
+		{
+			this.msg = msg;
+			this.host_socket = host_socket;
+		}
+		
+		@Override
+		public void run()
+		{
+			ObjectOutputStream oos;
+			try
+			{
+				oos = new ObjectOutputStream(host_socket.getOutputStream());
+				oos.writeObject(msg);
+				oos.flush();
+			} catch (SocketTimeoutException stoe)
+			{
+				stoe.printStackTrace();
+			} catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
+	}
+	
 	public static void main(String[] args) throws InterruptedException
 	{
 		ADBExecutor adb_executor = new ADBExecutor("D:\\AndroidSDK\\platform-tools\\adb.exe ");
@@ -179,7 +334,7 @@ public class PCHost
 //		host.shutDown();
 		
 		// sync. every 5 seconds for one hour and a half
-//		host.periodicalSync(5, 5400);
+//		host.periodicalSync(5, 60 * 60 * 4);
 //		host.shutDown();
 	}
 

@@ -1,23 +1,31 @@
-/**
- * @author hengxin
- * @date Jun 21, 2014
- * @description Basic messages in communication; 
- * Each message has its type indicated by an Integer and payload of arbitrary class. 
- */
 package ics.android_usb_computer.message;
 
 import java.io.Serializable;
 
+/**
+ * @description Basic messages in communication; 
+ * Each message has its type indicated by an Integer and payload of arbitrary class. 
+ * 
+ * @author hengxin
+ * @date Jun 21, 2014
+ */
 public abstract class Message implements Serializable
 {
 	private static final long serialVersionUID = -3130699534237155171L;
 
 	public static final int SYNC_TIME_MSG = 0;
 	
+	// from PC to Android device: I authorize your time polling
+	public static final int AUTHORIZATION_MSG = 1;
+	// from Android device to PC: Please give me your current time
+	public static final int REQUEST_TIME_MSG = 2;
+	// from PC to Android device: Here is my current time (when I accept your request)
+	public static final int RESPONSE_TIME_MSG = 4;
+	
 	// type of message
-	protected int type = -1;
+	protected final int type;
 	// actual payload of message
-	protected Object payload = null;
+	protected Object payload;
 	
 	/**
 	 * constructor of {@link Message}

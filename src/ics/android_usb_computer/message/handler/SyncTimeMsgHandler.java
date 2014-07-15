@@ -1,12 +1,12 @@
 /**
  * @author hengxin
  * @date Jun 21, 2014
- * @description message handler of {@link SyncTimeMsg}
+ * @description message handler of {@link ResponseTimeMsg}
  */
 package ics.android_usb_computer.message.handler;
 
 import ics.android_usb_computer.message.Message;
-import ics.android_usb_computer.message.SyncTimeMsg;
+import ics.android_usb_computer.message.ResponseTimeMsg;
 import ics.android_usb_computer.utils.ConfigureLog4J;
 
 import org.apache.log4j.Logger;
@@ -21,7 +21,7 @@ public class SyncTimeMsgHandler extends MessageHandler
 	
 	/**
 	 * constructor of {@link SyncTimeMsgHandler}
-	 * @param sync_time_msg message of type {@link SyncTimeMsg} to handle with
+	 * @param sync_time_msg message of type {@link ResponseTimeMsg} to handle with
 	 */
 	public SyncTimeMsgHandler(Message sync_time_msg)
 	{
@@ -30,7 +30,7 @@ public class SyncTimeMsgHandler extends MessageHandler
 	
 	/**
 	 * constructor of {@link SyncTimeMsgHandler}
-	 * @param sync_time_msg message of type {@link SyncTimeMsg} to handle with
+	 * @param sync_time_msg message of type {@link ResponseTimeMsg} to handle with
 	 * @param ctxt possible {@link Context} to use
 	 */
 	public SyncTimeMsgHandler(Message sync_time_msg, Context ctxt)
@@ -39,13 +39,13 @@ public class SyncTimeMsgHandler extends MessageHandler
 	}
 	
 	/**
-	 * handle with the messages of type {@link SyncTimeMsg}
+	 * handle with the messages of type {@link ResponseTimeMsg}
 	 */
 	@Override
 	public void handle()
 	{
 		long android_time = System.currentTimeMillis();
-		long pc_time = ((SyncTimeMsg) super.msg).getSyncTime();
+		long pc_time = ((ResponseTimeMsg) super.msg).getSyncTime();
 		
 		final long diff = android_time - pc_time;
 		

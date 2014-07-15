@@ -13,6 +13,7 @@ import ics.android_usb_computer.pc.ADBExecutor;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.StreamCorruptedException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -30,7 +31,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class SyncTimeFragment extends Fragment implements OnClickListener 
+public class TimePollingFragment extends Fragment implements OnClickListener 
 {
 	public static final String TAG = "Connection";
 	
@@ -44,9 +45,9 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	private Button btn_connect = null;
 
 	/**
-	 * default constructor of {@link SyncTimeFragment}
+	 * default constructor of {@link TimePollingFragment}
 	 */
-	public SyncTimeFragment()
+	public TimePollingFragment()
 	{
 		
 	}
@@ -75,13 +76,33 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 			// initialize server socket in background
 			case R.id.btn_connect:
 				new ServerTask().execute();
-				Toast.makeText(getActivity(), "Port is open. Wait for time from PC.", Toast.LENGTH_SHORT).show();
+				Toast.makeText(getActivity(), "Port is open. Time polling is working.", Toast.LENGTH_SHORT).show();
 				break;
 			default:
 				break;
 		}
 	}
 
+	public void establishConnection()
+	{
+		if (this.server_socket != null)
+			return;
+		
+		try
+		{
+			server_socket = new ServerSocket();
+			server_socket.bind(new InetSocketAddress("localhost", ADBExecutor.ANDROID_PORT));
+			
+			final Socket pc_socket = server_socket.accept();
+			
+		} catch (IOException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
 	/**
 	 * create server socket, listen to and accept messages
 	 */
@@ -95,7 +116,6 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 		{
 			server_socket = new ServerSocket();
 			server_socket.bind(new InetSocketAddress("localhost", ADBExecutor.ANDROID_PORT));
-//			server_socket.setSoTimeout(TIMEOUT * 1000);
 
 			// wait to accept connections
 			while (true)
@@ -117,7 +137,7 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 							{
 								ois = new ObjectInputStream(client_socket.getInputStream());
 								msg = (Message) ois.readObject();
-								SyncTimeFragment.this.onReceive(msg);
+								TimePollingFragment.this.onReceive(msg);
 							}
 						} catch (StreamCorruptedException sce)
 						{
@@ -170,7 +190,8 @@ public class SyncTimeFragment extends Fragment implements OnClickListener
 	}
 
 	/**
-	 * Release the server socket if it exists
+	 * Called when the "Back button" on mobile phone is clicked;
+	 * Release the server socket (if it exists) before exiting
 	 */
 	@Override
 	public void onDestroy()
