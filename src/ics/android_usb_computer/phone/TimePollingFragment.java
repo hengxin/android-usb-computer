@@ -24,9 +24,9 @@ import java.net.Socket;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -36,7 +36,7 @@ import android.widget.Toast;
 
 public class TimePollingFragment extends Fragment implements OnClickListener 
 {
-	public static final String TAG = "Connection";
+	private static final String TAG = TimePollingFragment.class.getName();
 	
 	// timeout in second
 	public static final int TIMEOUT = 60;
@@ -93,15 +93,15 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 	{
 		switch (v.getId())
 		{
-			// initialize server socket in background
-			case R.id.btn_connect:
-				new SyncTimeTask().execute();
+			
+			case R.id.btn_connect:	// initialize server socket in background
+				exec.execute(this.SyncTimeDaemon);
 				Toast.makeText(getActivity(), "Port is open. Begin to Sync. Time.", Toast.LENGTH_SHORT).show();
 				this.btn_start_time_sync.setEnabled(false);
 				break;
 			
 			case R.id.btn_start_polling:
-				new TimePollingTask().execute();
+				exec.execute(this.TimePollingDaemon);
 				Toast.makeText(getActivity(), "Starting polling time", Toast.LENGTH_SHORT).show();
 				this.btn_start_time_poll.setEnabled(false);
 				break;
@@ -129,6 +129,8 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 			server_socket = new ServerSocket();
 			server_socket.bind(new InetSocketAddress("localhost", ADBExecutor.ANDROID_PORT));
 			
+			Log.d(TAG, "Localhost serversocket for time polling: " + server_socket.toString());
+			
 			host_socket = server_socket.accept();
 			
 			// receive (and consume) {@link AuthMsg} from PC and enable the time-polling functionality.
@@ -139,6 +141,14 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		}
 	}
 
+	// Daemon thread for establishing and maintaining the time polling connection
+	private Runnable TimePollingDaemon = new Runnable()
+	{
+		public void run()
+		{
+			establishDeviceHostConnection();
+		}
+	};
 	
 	/**
 	 * Receive {@link AuthMsg} from PC; Enable the time-polling functionality.
@@ -194,16 +204,6 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 		});
 		
 		return time;
-	}
-	
-	public class TimePollingTask extends AsyncTask<String, Void, Void>
-	{
-		@Override
-		protected Void doInBackground(String... params)
-		{
-			establishDeviceHostConnection();
-			return null;
-		}
 	}
 	
 	/**
@@ -321,13 +321,12 @@ public class TimePollingFragment extends Fragment implements OnClickListener
 	 * create server socket, listen on port, and wait for coming connections;
 	 * upon receiving connection, start a new thread to process it.
 	 */
-	public class SyncTimeTask extends AsyncTask<String, Void, Void>
+	private Runnable SyncTimeDaemon = new Runnable()
 	{
-		@Override
-		protected Void doInBackground(String... params)
+		public void run()
 		{
 			getReadyForSync();
-			return null;
 		}
-	}
+	};
+	
 }
